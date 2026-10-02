@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nook</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="shell" id="shell">
+    <div class="window-bar">
+      <div class="window-bar-row">
+        <button class="win" id="sync-button" aria-label="Sync tasks to a cloud folder" title="Not synced — click to choose a synced folder">☁</button>
+        <button class="switch" id="pin-toggle" role="switch" aria-checked="false" aria-label="Keep above other windows" title="Keep above other windows">
+          <span class="switch-knob"></span>
+        </button>
+        <button class="win close" id="close-button" aria-label="Minimize to tray" title="Minimize to tray">×</button>
+      </div>
+      <button class="win cal-toggle" id="calendar-toggle" aria-pressed="true" aria-label="Hide calendar" title="Hide calendar">
+        <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="3.5" y="4.5" width="17" height="16" rx="2.5"/>
+          <line x1="3.5" y1="9.5" x2="20.5" y2="9.5"/>
+          <line x1="7.5" y1="2.5" x2="7.5" y2="6.5"/>
+          <line x1="16.5" y1="2.5" x2="16.5" y2="6.5"/>
+        </svg>
+      </button>
+    </div>
+    <aside class="agenda-pane" aria-label="Agenda">
+      <div class="agenda-head">
+        <div class="brand">
+          <h2 class="agenda-title">Nook</h2>
+          <p class="agenda-subtitle">Agenda</p>
+        </div>
+      </div>
+      <div class="agenda-list" id="agenda-list"></div>
+    </aside>
+
+    <section class="calendar-pane" aria-label="Calendar">
+      <header class="pane-head">
+        <div>
+          <h1 id="month-label">October</h1>
+          <p id="year-label">2026</p>
+        </div>
+        <div class="nav">
+          <button class="chip" id="today-button">Today</button>
+          <button class="circle" id="previous-button" aria-label="Previous month">‹</button>
+          <button class="circle" id="next-button" aria-label="Next month">›</button>
+        </div>
+      </header>
+      <div class="grid" id="calendar-grid" role="grid"></div>
+      <p class="hint" id="month-summary"></p>
+    </section>
+
+    <aside class="task-pane" aria-label="Tasks">
+      <button class="collapse" id="collapse-button" aria-label="Hide tasks" title="Hide tasks">›</button>
+
+      <div class="day-head">
+        <p class="eyebrow" id="day-eyebrow">TODAY</p>
+        <h2 id="day-title">Friday, October 2</h2>
+        <div class="progress" aria-hidden="true"><span id="progress-bar"></span></div>
+        <p class="progress-text" id="progress-text"></p>
+      </div>
+
+      <ul class="task-list" id="task-list"></ul>
+
+      <form class="composer" id="task-form" autocomplete="off">
+        <div class="composer-input-row">
+          <input id="task-input" type="text" placeholder="Add a task…" maxlength="120" aria-label="New task">
+          <button class="composer-submit" type="submit" aria-label="Add task" title="Add task">✓</button>
+        </div>
+        <div class="composer-row">
+          <input id="task-time" type="time" aria-label="Time (optional)">
+          <select id="task-repeat" aria-label="Repeat">
+            <option value="none">Once</option>
+            <option value="daily">Daily</option>
+            <option value="weekly">Weekly</option>
+          </select>
+          <div class="swatches" id="swatches" role="radiogroup" aria-label="Color"></div>
+        </div>
+        <div class="reminder-options">
+          <label><input type="checkbox" id="reminder-day-before"> Day before, 9pm</label>
+          <label><input type="checkbox" id="reminder-day-of"> Day of, <span id="reminder-day-of-time">9am</span></label>
+        </div>
+      </form>
+    </aside>
+  </main>
+  <script src="renderer.js"></script>
+</body>
+</html>

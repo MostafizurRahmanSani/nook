@@ -1,0 +1,51 @@
+{
+  "name": "nook",
+  "productName": "Nook",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A small desktop agenda and calendar that perches in the corner of your screen.",
+  "author": "MostafizurRahmanSani",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/MostafizurRahmanSani/nook.git"
+  },
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win nsis"
+  },
+  "devDependencies": {
+    "electron": "^33.2.1",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.nook.widget",
+    "productName": "Nook",
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer.js",
+      "index.html",
+      "styles.css",
+      "icon.ico"
+    ],
+    "win": {
+      "icon": "icon.ico",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
+  }
+}
