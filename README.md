@@ -1,8 +1,33 @@
-<p align="center"><img src="docs/icon.png" alt="Nook icon" width="96"></p>
+<p align="center">
+  <img src="docs/icon.png" alt="Nook icon" width="88">
+</p>
 
-# Nook
+<h1 align="center">Nook</h1>
 
-A small desktop agenda and calendar that perches in the corner of your screen. Built with Electron — lightweight, always within reach, and gets out of the way when you don't need it.
+<p align="center">
+  <b>A tiny desktop agenda and calendar that perches in the corner of your screen.</b><br>
+  Lightweight, always within reach, and out of the way when you don't need it.
+</p>
+
+<p align="center">
+  <a href="https://github.com/MostafizurRahmanSani/nook/releases"><img src="https://img.shields.io/badge/%E2%AC%87%20Download%20for%20Windows-E8725C?style=for-the-badge" alt="Download for Windows"></a>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/github/v/release/MostafizurRahmanSani/nook?style=flat-square" alt="Latest release">
+  <img src="https://img.shields.io/github/license/MostafizurRahmanSani/nook?style=flat-square" alt="License">
+  <img src="https://img.shields.io/github/stars/MostafizurRahmanSani/nook?style=flat-square" alt="Stars">
+</p>
+
+<p align="center">
+  <img src="docs/add-task.png" alt="Nook with the agenda, calendar and task panel open" width="720">
+</p>
+
+<p align="center">
+  <img src="docs/agenda.png" alt="Agenda view" height="280">
+  &nbsp;&nbsp;
+  <img src="docs/calendar.png" alt="Agenda and calendar" height="280">
+</p>
 
 <p align="center">
   <img src="https://img.shields.io/badge/Electron-47848F?style=for-the-badge&logo=electron&logoColor=white" alt="Electron">
@@ -14,15 +39,7 @@ A small desktop agenda and calendar that perches in the corner of your screen. B
   <img src="https://img.shields.io/badge/Windows-0078D4?style=for-the-badge&logo=windows&logoColor=white" alt="Windows">
 </p>
 
-## Screenshots
-
-<p align="center">
-  <img src="docs/agenda.png" alt="Agenda view" height="300">
-  <img src="docs/calendar.png" alt="Agenda and calendar" height="300">
-</p>
-<p align="center">
-  <img src="docs/add-task.png" alt="Adding a task with reminders" width="620">
-</p>
+---
 
 ## Download
 
