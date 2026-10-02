@@ -1,6 +1,28 @@
+<p align="center"><img src="docs/icon.png" alt="Nook icon" width="96"></p>
+
 # Nook
 
 A small desktop agenda and calendar that perches in the corner of your screen. Built with Electron — lightweight, always within reach, and gets out of the way when you don't need it.
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Electron-47848F?style=for-the-badge&logo=electron&logoColor=white" alt="Electron">
+  <img src="https://img.shields.io/badge/JavaScript-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black" alt="JavaScript">
+  <img src="https://img.shields.io/badge/HTML5-E34F26?style=for-the-badge&logo=html5&logoColor=white" alt="HTML5">
+  <img src="https://img.shields.io/badge/CSS3-1572B6?style=for-the-badge&logo=css3&logoColor=white" alt="CSS3">
+  <img src="https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white" alt="Node.js">
+  <img src="https://img.shields.io/badge/Dropbox-0061FF?style=for-the-badge&logo=dropbox&logoColor=white" alt="Dropbox">
+  <img src="https://img.shields.io/badge/Windows-0078D4?style=for-the-badge&logo=windows&logoColor=white" alt="Windows">
+</p>
+
+## Screenshots
+
+<p align="center">
+  <img src="docs/agenda.png" alt="Agenda view" height="300">
+  <img src="docs/calendar.png" alt="Agenda and calendar" height="300">
+</p>
+<p align="center">
+  <img src="docs/add-task.png" alt="Adding a task with reminders" width="620">
+</p>
 
 ## Download
 
@@ -108,6 +130,7 @@ This produces `dist/Nook Setup 1.0.0.exe` via [electron-builder](https://www.ele
 - [Electron](https://www.electronjs.org/) — desktop shell
 - Vanilla HTML/CSS/JS — no frameworks, no build step for the app itself
 - [electron-builder](https://www.electron.build/) — packaging
+- [Dropbox API](https://www.dropbox.com/developers) — optional cloud sync (OAuth + PKCE)
 
 ## Project structure
 
