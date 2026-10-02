@@ -223,6 +223,8 @@ h1, h2, p { margin: 0; }
 .swatch { width: 14px; height: 14px; padding: 0; border: 2px solid transparent; border-radius: 50%; background: var(--c); }
 .swatch[aria-checked='true'] { box-shadow: 0 0 0 2px var(--paper), 0 0 0 3.5px var(--c); }
 .reminder-options { display: flex; gap: 10px; margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--line); }
+.reminder-options { align-items: center; }
+.reminder-bell { flex: none; color: var(--blue); }
 .reminder-options label { display: flex; align-items: center; gap: 4px; font-size: 9.5px; font-weight: 600; color: var(--ink); }
 .reminder-options input { width: 11px; height: 11px; accent-color: var(--blue); }
 .task-list, .composer, .grid, .agenda-list { -webkit-app-region: no-drag; }

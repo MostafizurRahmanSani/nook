@@ -68,6 +68,18 @@ DROPBOX_REFRESH_TOKEN=...
 
 `.env` is never packaged into the installer. Do not commit it.
 
+## Cloud folder sync
+
+No Dropbox account or app setup needed. If you already use a sync client such as Google Drive, OneDrive or iCloud, point Nook at a folder it mirrors and your tasks follow you across devices through that client.
+
+- **Connect:** click ☁, then **Connect** on the **Cloud folder** row. A popup asks what to do if the folder already has saved tasks (**Merge**, **Rewrite** or **Use cloud**, explained above). Then pick the folder.
+- **Where it lives:** Nook keeps `calendar-widget-tasks.json` inside the folder you chose, and reads and writes it there instead of in its own app-data folder.
+- **How it syncs:** Nook saves to that file on every change and watches it, so edits that arrive from another device (once your sync client has copied the file over) show up in the widget without a restart. The actual copying between devices is done by your Google Drive / OneDrive client, not by Nook.
+- **Use the same folder on each PC:** choose the synced folder on every device you want to share tasks between.
+- **Remembered choice:** the folder path is stored in `%APPDATA%\Nook\config.json`.
+- **Disconnect:** click **Disconnect** on the Cloud folder row. Nook copies your tasks back to its own app-data folder, so nothing is lost, and the file in the cloud folder is left where it is.
+- **Together with Dropbox:** you can use both at once. The cloud folder holds the local copy, and Dropbox syncs that same data.
+
 ## Running from source
 
 Requires [Node.js](https://nodejs.org) (LTS).
