@@ -20,7 +20,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/add-task.png" alt="Nook with the agenda, calendar and task panel open" width="720">
+  <img src="docs/add-task.png" alt="Nook with the agenda, calendar and task panel open" height="280">
 </p>
 
 <p align="center">
