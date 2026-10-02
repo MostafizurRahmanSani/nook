@@ -244,4 +244,12 @@ h1, h2, p { margin: 0; }
 .popover button.quiet:hover { background: rgba(255, 255, 255, .24); }
 .popover.sync { flex-direction: column; align-items: stretch; gap: 8px; padding: 8px 8px 8px 10px; }
 .popover.sync .row { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+.popover.choice { white-space: normal; gap: 6px; padding: 10px; border-radius: 16px; }
+.popover.choice .info { margin-bottom: 2px; }
+.popover.choice button { display: flex; flex-direction: row; align-items: center; gap: 8px; text-align: left; padding: 6px 10px; }
+.popover.choice button svg { flex: none; }
+.popover.choice button span { display: block; font-size: 9px; font-weight: 600; opacity: .8; }
+.popover.choice button:empty, .popover.choice button span:empty { display: none; }
 @keyframes pop { from { opacity: 0; transform: translateY(4px) scale(.96); } to { opacity: 1; transform: none; } }
+
+.choice-backdrop { position: fixed; inset: 0; z-index: 19; -webkit-app-region: no-drag; }

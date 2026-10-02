@@ -213,11 +213,61 @@ async function getDropboxToken() {
 
 let connectServer = null;
 
-// Resolves true once the login completes, false if it fails, is denied or is abandoned.
-function connectDropbox() {
+// Resolves true once the login completes, false if it fails, is denied, is abandoned or the
+// user cancels the choice. The choice is asked first, before the browser opens.
+let dropboxConnecting = false;
+
+// Plain-text trail of the connect steps, kept in the app's data folder for troubleshooting.
+function logSync(message) {
+  try {
+    fs.appendFileSync(path.join(app.getPath('userData'), 'sync.log'), `${new Date().toISOString()} ${message}
+`);
+  } catch {
+    // Logging must never break syncing.
+  }
+}
+
+async function connectDropbox() {
+  const choice = await askSyncChoice('Dropbox');
+  logSync(`dropbox connect: choice=${choice}`);
+  if (!choice) return false;
+  dropboxConnecting = true; // keep the background sync from overriding the choice mid-connect
+  const connected = await new Promise((resolve) => startDropboxLogin(resolve));
+  logSync(`dropbox login connected=${connected}`);
+  if (!connected) { dropboxConnecting = false; return false; }
+  try {
+    const local = loadTasksFromDisk();
+    const remote = await dropboxDownload();
+    const resolved = remote ? applySyncChoice(choice, local, remote.tasks) : local;
+    logSync(`local=${local.length} remote=${remote ? remote.tasks.length : 'none'} resolved=${resolved.length}`);
+    fs.writeFileSync(tasksFilePath(), JSON.stringify(resolved));
+    await dropboxUpload(resolved);
+    widgetWindow?.webContents.send('tasks:changed', resolved);
+    logSync('uploaded ok');
+  } catch (err) {
+    logSync(`failed: ${err.message}`);
+    console.error(err.message);
+    dialog.showErrorBox('Dropbox', `Connected, but syncing your tasks failed: ${err.message}`);
+  }
+  dropboxConnecting = false;
+  return true;
+}
+
+// Asks (in the widget) what to do if the cloud already holds tasks. Resolves to
+// 'merge' | 'rewrite' | 'cloud', or null if the user cancelled.
+function askSyncChoice(cloudName) {
   return new Promise((resolve) => {
-    startDropboxLogin(resolve);
+    ipcMain.once('sync:choice', (_event, picked) => resolve(picked));
+    widgetWindow.webContents.send('sync:ask', { cloudName });
   });
+}
+
+function applySyncChoice(choice, local, cloud) {
+  if (choice === 'merge') {
+    const seen = new Set(cloud.map((task) => task.id));
+    return [...cloud, ...local.filter((task) => !seen.has(task.id))];
+  }
+  return choice === 'cloud' ? cloud : local;
 }
 
 function startDropboxLogin(done) {
@@ -251,7 +301,6 @@ function startDropboxLogin(done) {
       rememberAccessToken(data);
       res.writeHead(200, { 'Content-Type': 'text/html' }).end('<h3>Nook is connected to Dropbox. You can close this tab.</h3>');
       connected = true;
-      syncWithDropbox();
     } catch (err) {
       res.writeHead(500, { 'Content-Type': 'text/plain' }).end(`Could not connect: ${err.message}`);
       dialog.showErrorBox('Dropbox', `Could not connect: ${err.message}`);
@@ -323,7 +372,7 @@ function scheduleDropboxPush(tasks) {
 }
 
 async function syncWithDropbox() {
-  if (!hasDropbox() || dropboxPushTimer) return; // a local edit is about to be pushed anyway
+  if (!hasDropbox() || dropboxConnecting || dropboxPushTimer) return; // a local edit is about to be pushed anyway
   try {
     const remote = await dropboxDownload();
     const localPath = tasksFilePath();
@@ -439,6 +488,8 @@ app.whenReady().then(() => {
   // client (Google Drive, OneDrive…) already mirrors. Either, both or neither can be active.
   ipcMain.handle('sync:status', () => ({ dropbox: hasDropbox(), folder: readConfig().syncFolder || null }));
   ipcMain.handle('folder:choose', async (_event, currentTasks) => {
+    const choice = await askSyncChoice('This folder');
+    if (!choice) return null;
     const result = await dialog.showOpenDialog(widgetWindow, {
       properties: ['openDirectory'],
       title: 'Choose a synced folder (Google Drive, OneDrive, Dropbox…)'
@@ -446,10 +497,16 @@ app.whenReady().then(() => {
     if (result.canceled || !result.filePaths[0]) return null;
 
     const folder = result.filePaths[0];
+    let cloud = null;
+    try {
+      const parsed = JSON.parse(fs.readFileSync(path.join(folder, TASKS_FILENAME), 'utf8'));
+      if (Array.isArray(parsed)) cloud = parsed;
+    } catch {
+      // No tasks file in that folder yet.
+    }
+    const tasks = cloud ? applySyncChoice(choice, currentTasks || [], cloud) : (currentTasks || []);
     writeConfig({ ...readConfig(), syncFolder: folder });
-    const existing = fs.existsSync(path.join(folder, TASKS_FILENAME));
-    const tasks = existing ? loadTasksFromDisk() : (currentTasks || []);
-    if (!existing) saveTasksToDisk(tasks);
+    saveTasksToDisk(tasks);
     watchTasksFile();
     return { folder, tasks };
   });

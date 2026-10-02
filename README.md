@@ -17,7 +17,7 @@ It installs to your user folder (no admin rights needed), adds a Start Menu / De
 - **Recurring tasks** — repeat a task daily or weekly without re-adding it
 - **Reminders** — optional notifications the day before (9pm) or the day of (9am, or the task's own time if set), with catch-up logic if your PC was off when a reminder was due
 - **Completed tasks** — tucked into a collapsible "Completed" section with one-click undo
-- **Cloud sync, two ways** — click the ☁ button and pick **Dropbox** (sign in with your own account; see [Dropbox sync](#dropbox-sync) below) and/or **Drive folder** (point Nook at any folder already synced by Google Drive, OneDrive, etc.). Your tasks then follow you across devices
+- **Cloud sync, two ways** — click the ☁ button and pick **Dropbox** (sign in with your own account; see [Dropbox sync](#dropbox-sync) below) and/or **Cloud folder** (point Nook at any folder already synced by Google Drive, OneDrive, etc.). Your tasks then follow you across devices
 - **System tray** — minimizes to the tray instead of closing; auto-starts with Windows
 - **Always-on-top toggle** — pin it above other windows when you want it, or let it sit normally otherwise
 - **Rounded, transparent widget window** — anchored to the top-right corner of your screen, click-through outside its edges
@@ -28,11 +28,18 @@ Nook keeps your tasks in one JSON file and syncs it to your own Dropbox, so they
 
 **Anyone can use this with their own Dropbox.** The Dropbox login is tied to a Dropbox *app* (a free, one-time setup of about 5 minutes, see [Setting up your own Dropbox app](#setting-up-your-own-dropbox-app) below). Create your own, point Nook at it, and connect your account. Your tasks are stored only in your own Dropbox, and no one else, including the author, can see them.
 
-- **The ☁ popup:** click ☁ to open a small popup with two rows, **Dropbox** and **Drive folder**. Each shows **Connect** when it's off and **Disconnect** when it's on, and you can use either one, both, or neither. The ☁ turns blue while anything is connected.
-- **Connect Dropbox:** click **Connect** on the Dropbox row. Your browser opens Dropbox; click **Allow** and you're done. (Also available in the tray menu.)
-- **Connect a Drive folder:** click **Connect** on the Drive folder row and choose a folder that Google Drive, OneDrive, etc. already syncs. Nook keeps its tasks file there.
+- **The ☁ popup:** click ☁ to open a small popup with two rows, **Dropbox** and **Cloud folder**. Each shows **Connect** when it's off and **Disconnect** when it's on, and you can use either one, both, or neither. The ☁ turns blue while anything is connected.
+- **Connect Dropbox:** click **Connect** on the Dropbox row. A small popup first asks what to do if Dropbox already has tasks (see below), then your browser opens Dropbox; click **Allow** and you're done. (Also available in the tray menu.)
+- **Connect a cloud folder:** click **Connect** on the Cloud folder row, answer the same popup, then choose a folder that Google Drive, OneDrive, etc. already syncs. Nook keeps its tasks file there.
+- **Merge, Rewrite or Use cloud:** when you connect, the popup lets you choose how to combine this device's tasks with any saved copy in the cloud:
+  - **Merge** keeps both sets of tasks. If the same task exists on both sides, the cloud version is kept.
+  - **Rewrite** replaces the cloud copy with this device's tasks.
+  - **Use cloud** replaces this device's tasks with the cloud copy.
+  - **Cancel** (or clicking outside the popup) connects nothing.
+
+  If there is nothing in the cloud yet, your tasks are simply uploaded and the choice has no effect.
 - **Disconnect:** click **Disconnect** on that row. Your tasks stay on the PC; they just stop syncing there.
-- **How it syncs:** every change is uploaded about 2 seconds after you make it, and Nook checks Dropbox for changes every minute. If both sides changed, the most recently modified copy wins.
+- **How it syncs:** every change is uploaded about 2 seconds after you make it, and Nook checks Dropbox for changes every minute. After connecting, if both sides change, the most recently modified copy wins.
 - **Where it lives:** `calendar-widget-tasks.json` in the Dropbox app folder (`Dropbox/Apps/<your app name>/`).
 - **Login is one-time:** Nook stores a long-lived Dropbox refresh token in its own app-data folder (`%APPDATA%\Nook\config.json`). No app secret is bundled in the installer.
 

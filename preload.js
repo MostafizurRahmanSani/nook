@@ -11,5 +11,7 @@ contextBridge.exposeInMainWorld('widget', {
   disconnectFolder: () => ipcRenderer.invoke('folder:disconnect'),
   connectDropbox: () => ipcRenderer.invoke('dropbox:connect'),
   disconnectDropbox: () => ipcRenderer.invoke('dropbox:disconnect'),
+  onSyncAsk: (callback) => ipcRenderer.on('sync:ask', (_event, info) => callback(info)),
+  answerSyncAsk: (choice) => ipcRenderer.send('sync:choice', choice),
   onTasksChanged: (callback) => ipcRenderer.on('tasks:changed', (_event, tasks) => callback(tasks))
 });
