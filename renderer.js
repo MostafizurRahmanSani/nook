@@ -583,7 +583,7 @@ function closePanel() {
 
 $('#collapse-button').addEventListener('click', closePanel);
 document.addEventListener('mousedown', (event) => {
-  if (popover && !popover.contains(event.target) && !event.target.closest('.day')) hidePopover();
+  if (popover && !popover.contains(event.target) && !event.target.closest('.day, #sync-button')) hidePopover();
 });
 document.addEventListener('keydown', (event) => {
   if (event.key !== 'Escape' || document.activeElement?.classList.contains('edit')) return;
@@ -630,21 +630,86 @@ $('#pin-toggle').addEventListener('click', (event) => {
 
 /* ---------- sync ---------- */
 
-function setSyncStatus(folder) {
+let syncState = { dropbox: false, folder: null };
+
+function setSyncStatus(state) {
+  syncState = state;
   const button = $('#sync-button');
-  button.classList.toggle('synced', Boolean(folder));
-  button.title = folder ? `Synced with: ${folder}` : 'Not synced — click to choose a synced folder';
+  const active = [state.dropbox && 'Dropbox', state.folder && 'a folder'].filter(Boolean);
+  button.classList.toggle('synced', active.length > 0);
+  button.title = active.length ? `Synced with ${active.join(' and ')} — click to manage` : 'Not synced — click to choose how to sync';
 }
 
-window.widget.getSyncInfo().then((info) => setSyncStatus(info.folder));
+const refreshSyncStatus = async () => setSyncStatus(await window.widget.getSyncStatus());
+refreshSyncStatus();
+
+// One row per sync option: shows its state and either a Connect or a Disconnect button.
+function syncRow(name, detail, connected, onConnect, onDisconnect) {
+  const row = document.createElement('div');
+  row.className = 'row';
+
+  const info = document.createElement('div');
+  info.className = 'info';
+  const heading = document.createElement('b');
+  heading.textContent = name;
+  const sub = document.createElement('span');
+  sub.textContent = detail;
+  info.append(heading, sub);
+
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = connected ? 'quiet' : '';
+  button.textContent = connected ? 'Disconnect' : 'Connect';
+  button.addEventListener('click', () => {
+    hidePopover();
+    (connected ? onDisconnect : onConnect)();
+  });
+
+  row.append(info, button);
+  return row;
+}
+
+function showSyncPopover() {
+  hidePopover();
+  popover = document.createElement('div');
+  popover.className = 'popover below sync';
+  popover.setAttribute('role', 'dialog');
+
+  const folderName = syncState.folder ? syncState.folder.split(/[\\/]/).filter(Boolean).pop() : '';
+  popover.append(
+    syncRow('Dropbox', syncState.dropbox ? 'Connected · syncing' : 'Sign in with your account', syncState.dropbox,
+      async () => setSyncStatus({ ...syncState, dropbox: await window.widget.connectDropbox() }),
+      async () => { await window.widget.disconnectDropbox(); await refreshSyncStatus(); }),
+    syncRow('Drive folder', syncState.folder ? folderName : 'Google Drive, OneDrive…', Boolean(syncState.folder),
+      async () => {
+        const result = await window.widget.chooseSyncFolder(tasks);
+        if (!result) return;
+        tasks = result.tasks;
+        editingId = null;
+        await refreshSyncStatus();
+        render();
+      },
+      async () => {
+        tasks = await window.widget.disconnectFolder();
+        await refreshSyncStatus();
+        render();
+      })
+  );
+  document.body.append(popover);
+
+  const rect = $('#sync-button').getBoundingClientRect();
+  const box = popover.getBoundingClientRect();
+  const center = rect.left + rect.width / 2;
+  const left = Math.max(8, Math.min(center - box.width / 2, window.innerWidth - box.width - 8));
+  popover.style.left = `${left}px`;
+  popover.style.top = `${rect.bottom + 8}px`;
+  popover.style.setProperty('--arrow', `${center - left}px`);
+}
 
 $('#sync-button').addEventListener('click', async () => {
-  const result = await window.widget.chooseSyncFolder(tasks);
-  if (!result) return;
-  tasks = result.tasks;
-  editingId = null;
-  setSyncStatus(result.folder);
-  render();
+  if (popover) { hidePopover(); return; }
+  await refreshSyncStatus();
+  showSyncPopover();
 });
 
 window.widget.onTasksChanged((updated) => {
