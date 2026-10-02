@@ -1,6 +1,3 @@
 node_modules/
-dist/*
-
-# Keep the installer exe even though the rest of dist/ is ignored
-!dist/Nook Setup 1.0.0.exe
+dist/
 .env

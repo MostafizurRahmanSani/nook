@@ -6,7 +6,7 @@ A small desktop agenda and calendar that perches in the corner of your screen. B
 
 Grab the installer and run it — no Node, no terminal, no setup required.
 
-**[⬇ Download Nook Setup 1.0.0.exe](dist/Nook%20Setup%201.0.0.exe)**
+**[⬇ Download the latest installer from Releases](https://github.com/MostafizurRahmanSani/nook/releases)**
 
 It installs to your user folder (no admin rights needed), adds a Start Menu / Desktop shortcut, and registers itself to auto-start on login.
 
@@ -78,7 +78,7 @@ npm start
 npm run dist
 ```
 
-This produces `dist/Nook Setup 1.0.0.exe` via [electron-builder](https://www.electron.build/).
+This produces `dist/Nook Setup 1.0.0.exe` via [electron-builder](https://www.electron.build/). The `dist/` folder is git-ignored; finished installers are published on the [Releases](https://github.com/MostafizurRahmanSani/nook/releases) page instead of being committed.
 
 > **Note:** building the installer on Windows requires [Developer Mode](ms-settings:developers) enabled (Settings → Privacy & security → For developers), since electron-builder needs to create symlinks while packaging.
 >
