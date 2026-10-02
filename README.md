@@ -22,6 +22,20 @@ It installs to your user folder (no admin rights needed), adds a Start Menu / De
 - **Always-on-top toggle** — pin it above other windows when you want it, or let it sit normally otherwise
 - **Rounded, transparent widget window** — anchored to the top-right corner of your screen, click-through outside its edges
 
+## Branches
+
+- **`main`** — the stable version described above. Cloud sync works by pointing Nook at a folder that Google Drive, OneDrive, Dropbox, etc. already syncs.
+- **[`personal-dropbox`](https://github.com/MostafizurRahmanSani/nook/tree/personal-dropbox)** — adds direct Dropbox sync. Click the ☁ button to connect your Dropbox account, and tasks sync across your PCs without a synced folder. It uses your own Dropbox app (free, about 5 minutes to set up); the branch README has the step-by-step setup. It replaces the folder picker with the Dropbox login.
+
+To try it from source:
+
+```bash
+git clone -b personal-dropbox https://github.com/MostafizurRahmanSani/nook.git
+cd nook
+npm install
+npm start
+```
+
 ## Running from source
 
 Requires [Node.js](https://nodejs.org) (LTS).
