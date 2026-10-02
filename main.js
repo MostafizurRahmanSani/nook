@@ -435,7 +435,37 @@ app.whenReady().then(() => {
   ipcMain.handle('tasks:load', () => loadTasksFromDisk());
   ipcMain.on('tasks:save', (_event, tasks) => saveTasksToDisk(tasks));
   // The ☁ button: connect Nook to Dropbox, or disconnect again.
-  ipcMain.handle('dropbox:status', () => hasDropbox());
+  // The ☁ button offers two independent ways to sync: Dropbox, and a folder that another
+  // client (Google Drive, OneDrive…) already mirrors. Either, both or neither can be active.
+  ipcMain.handle('sync:status', () => ({ dropbox: hasDropbox(), folder: readConfig().syncFolder || null }));
+  ipcMain.handle('folder:choose', async (_event, currentTasks) => {
+    const result = await dialog.showOpenDialog(widgetWindow, {
+      properties: ['openDirectory'],
+      title: 'Choose a synced folder (Google Drive, OneDrive, Dropbox…)'
+    });
+    if (result.canceled || !result.filePaths[0]) return null;
+
+    const folder = result.filePaths[0];
+    writeConfig({ ...readConfig(), syncFolder: folder });
+    const existing = fs.existsSync(path.join(folder, TASKS_FILENAME));
+    const tasks = existing ? loadTasksFromDisk() : (currentTasks || []);
+    if (!existing) saveTasksToDisk(tasks);
+    watchTasksFile();
+    return { folder, tasks };
+  });
+  ipcMain.handle('folder:disconnect', () => {
+    // Keep the tasks: copy them back to the app's own data folder before dropping the folder.
+    const tasks = loadTasksFromDisk();
+    const { syncFolder, ...rest } = readConfig();
+    writeConfig(rest);
+    try {
+      fs.writeFileSync(DEFAULT_TASKS_PATH, JSON.stringify(tasks));
+    } catch (err) {
+      console.error('Could not keep tasks after disconnecting the folder', err);
+    }
+    watchTasksFile();
+    return tasks;
+  });
   ipcMain.handle('dropbox:connect', () => connectDropbox());
   ipcMain.handle('dropbox:disconnect', () => {
     disconnectDropbox();

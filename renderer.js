@@ -630,38 +630,71 @@ $('#pin-toggle').addEventListener('click', (event) => {
 
 /* ---------- sync ---------- */
 
-function setSyncStatus(connected) {
+let syncState = { dropbox: false, folder: null };
+
+function setSyncStatus(state) {
+  syncState = state;
   const button = $('#sync-button');
-  button.classList.toggle('synced', connected);
-  button.title = connected ? 'Synced with Dropbox — click to disconnect' : 'Not synced — click to connect Dropbox';
+  const active = [state.dropbox && 'Dropbox', state.folder && 'a folder'].filter(Boolean);
+  button.classList.toggle('synced', active.length > 0);
+  button.title = active.length ? `Synced with ${active.join(' and ')} — click to manage` : 'Not synced — click to choose how to sync';
 }
 
-window.widget.getDropboxStatus().then(setSyncStatus);
+const refreshSyncStatus = async () => setSyncStatus(await window.widget.getSyncStatus());
+refreshSyncStatus();
 
-function showSyncPopover() {
-  hidePopover();
-  popover = document.createElement('div');
-  popover.className = 'popover below';
-  popover.setAttribute('role', 'dialog');
+// One row per sync option: shows its state and either a Connect or a Disconnect button.
+function syncRow(name, detail, connected, onConnect, onDisconnect) {
+  const row = document.createElement('div');
+  row.className = 'row';
 
   const info = document.createElement('div');
   info.className = 'info';
   const heading = document.createElement('b');
-  heading.textContent = 'Dropbox';
-  const detail = document.createElement('span');
-  detail.textContent = 'Connected · syncing';
-  info.append(heading, detail);
+  heading.textContent = name;
+  const sub = document.createElement('span');
+  sub.textContent = detail;
+  info.append(heading, sub);
 
-  const disconnect = document.createElement('button');
-  disconnect.type = 'button';
-  disconnect.className = 'quiet';
-  disconnect.textContent = 'Disconnect';
-  disconnect.addEventListener('click', async () => {
-    setSyncStatus(await window.widget.disconnectDropbox());
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = connected ? 'quiet' : '';
+  button.textContent = connected ? 'Disconnect' : 'Connect';
+  button.addEventListener('click', () => {
     hidePopover();
+    (connected ? onDisconnect : onConnect)();
   });
 
-  popover.append(info, disconnect);
+  row.append(info, button);
+  return row;
+}
+
+function showSyncPopover() {
+  hidePopover();
+  popover = document.createElement('div');
+  popover.className = 'popover below sync';
+  popover.setAttribute('role', 'dialog');
+
+  const folderName = syncState.folder ? syncState.folder.split(/[\\/]/).filter(Boolean).pop() : '';
+  popover.append(
+    syncRow('Dropbox', syncState.dropbox ? 'Connected · syncing' : 'Sign in with your account', syncState.dropbox,
+      async () => setSyncStatus({ ...syncState, dropbox: await window.widget.connectDropbox() }),
+      async () => { await window.widget.disconnectDropbox(); await refreshSyncStatus(); }),
+    syncRow('Drive folder', syncState.folder ? folderName : 'Google Drive, OneDrive…', Boolean(syncState.folder),
+      async () => {
+        const result = await window.widget.chooseSyncFolder(tasks);
+        if (!result) return;
+        tasks = result.tasks;
+        editingId = null;
+        await refreshSyncStatus();
+        render();
+      },
+      async () => {
+        tasks = await window.widget.disconnectFolder();
+        await refreshSyncStatus();
+        render();
+      })
+  );
   document.body.append(popover);
 
   const rect = $('#sync-button').getBoundingClientRect();
@@ -675,8 +708,8 @@ function showSyncPopover() {
 
 $('#sync-button').addEventListener('click', async () => {
   if (popover) { hidePopover(); return; }
-  if (await window.widget.getDropboxStatus()) showSyncPopover();
-  else setSyncStatus(await window.widget.connectDropbox());
+  await refreshSyncStatus();
+  showSyncPopover();
 });
 
 window.widget.onTasksChanged((updated) => {

@@ -6,7 +6,9 @@ contextBridge.exposeInMainWorld('widget', {
   setIgnoreMouseEvents: (ignore, forward) => ipcRenderer.send('widget:set-ignore-mouse-events', ignore, forward),
   loadTasks: () => ipcRenderer.invoke('tasks:load'),
   saveTasks: (tasks) => ipcRenderer.send('tasks:save', tasks),
-  getDropboxStatus: () => ipcRenderer.invoke('dropbox:status'),
+  getSyncStatus: () => ipcRenderer.invoke('sync:status'),
+  chooseSyncFolder: (currentTasks) => ipcRenderer.invoke('folder:choose', currentTasks),
+  disconnectFolder: () => ipcRenderer.invoke('folder:disconnect'),
   connectDropbox: () => ipcRenderer.invoke('dropbox:connect'),
   disconnectDropbox: () => ipcRenderer.invoke('dropbox:disconnect'),
   onTasksChanged: (callback) => ipcRenderer.on('tasks:changed', (_event, tasks) => callback(tasks))
