@@ -523,9 +523,15 @@ taskForm.addEventListener('submit', (event) => {
 
 /* ---------- chrome ---------- */
 
+let popoverBackdrop = null;
+const hideOnBlur = () => hidePopover();
+
 function hidePopover() {
   popover?.remove();
   popover = null;
+  popoverBackdrop?.remove();
+  popoverBackdrop = null;
+  window.removeEventListener('blur', hideOnBlur);
 }
 
 function showPopover() {
@@ -677,10 +683,10 @@ function showSyncPopover() {
 
   const folderName = syncState.folder ? syncState.folder.split(/[\\/]/).filter(Boolean).pop() : '';
   popover.append(
-    syncRow('Dropbox', syncState.dropbox ? 'Connected · syncing' : 'Sign in with your account', syncState.dropbox,
+    syncRow('Dropbox', syncState.dropbox ? 'Connected · synced' : 'Sign in with your account', syncState.dropbox,
       async () => setSyncStatus({ ...syncState, dropbox: await window.widget.connectDropbox() }),
       async () => { await window.widget.disconnectDropbox(); await refreshSyncStatus(); }),
-    syncRow('Drive folder', syncState.folder ? folderName : 'Google Drive, OneDrive…', Boolean(syncState.folder),
+    syncRow('Cloud folder', syncState.folder ? folderName : 'Google Drive, OneDrive…', Boolean(syncState.folder),
       async () => {
         const result = await window.widget.chooseSyncFolder(tasks);
         if (!result) return;
@@ -695,7 +701,14 @@ function showSyncPopover() {
         render();
       })
   );
-  document.body.append(popover);
+  // Catch clicks in the drag area and the click-through margin, and close if focus is lost.
+  popoverBackdrop = document.createElement('div');
+  popoverBackdrop.className = 'choice-backdrop';
+  popoverBackdrop.addEventListener('mousedown', hidePopover);
+  window.addEventListener('blur', hideOnBlur);
+  document.body.append(popoverBackdrop, popover);
+  window.widget.setIgnoreMouseEvents(false, false);
+  ignoringMouse = false;
 
   const rect = $('#sync-button').getBoundingClientRect();
   const box = popover.getBoundingClientRect();
@@ -712,6 +725,76 @@ $('#sync-button').addEventListener('click', async () => {
   showSyncPopover();
 });
 
+let choiceBox = null; // the Merge/Rewrite/Use cloud popup, kept clickable through the transparent margin
+
+// Asked by the main process when connecting a cloud copy that already exists.
+window.widget.onSyncAsk(({ cloudName }) => {
+  hidePopover();
+  const box = document.createElement('div');
+  choiceBox = box;
+  box.className = 'popover sync choice';
+  box.setAttribute('role', 'dialog');
+
+  const title = document.createElement('div');
+  title.className = 'info';
+  const heading = document.createElement('b');
+  heading.textContent = `Connect ${cloudName}`;
+  const sub = document.createElement('span');
+  sub.textContent = 'If it already has tasks, what should Nook do?';
+  title.append(heading, sub);
+  box.append(title);
+
+  // Clicking anywhere outside the popup counts as Cancel.
+  // A transparent backdrop covers the whole window (including the drag area and the
+  // click-through margin) so any click lands on it; losing focus cancels too.
+  const backdrop = document.createElement('div');
+  backdrop.className = 'choice-backdrop';
+  backdrop.addEventListener('mousedown', () => answer(null));
+  const onBlur = () => answer(null);
+  const answer = (choice) => {
+    window.removeEventListener('blur', onBlur);
+    backdrop.remove();
+    box.remove();
+    choiceBox = null;
+    window.widget.answerSyncAsk(choice);
+  };
+  window.addEventListener('blur', onBlur);
+  const icons = {
+    merge: '<path d="M6 3v6a6 6 0 0 0 6 6h6M18 3v6a6 6 0 0 1-6 6v6"/>',
+    rewrite: '<path d="M12 16V4M7 9l5-5 5 5M5 20h14"/>',
+    cloud: '<path d="M12 4v12M7 11l5 5 5-5M5 20h14"/>',
+    cancel: '<path d="M6 6l12 12M18 6L6 18"/>'
+  };
+  const option = (label, hint, choice, quiet, icon) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = quiet ? 'quiet' : '';
+    button.innerHTML = `<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">${icons[icon]}</svg><div><b></b><span></span></div>`;
+    button.querySelector('b').textContent = label;
+    button.querySelector('span').textContent = hint;
+    button.addEventListener('click', () => answer(choice));
+    return button;
+  };
+  box.append(
+    option('Merge', 'Keep both sets of tasks', 'merge', false, 'merge'),
+    option('Rewrite', 'Replace the cloud with this device', 'rewrite', true, 'rewrite'),
+    option('Use cloud', 'Replace this device with the cloud', 'cloud', true, 'cloud'),
+    option('Cancel', '', null, true, 'cancel')
+  );
+  document.body.append(backdrop, box);
+  window.widget.setIgnoreMouseEvents(false, false);
+  ignoringMouse = false;
+
+  const rect = $('#sync-button').getBoundingClientRect();
+  const width = box.getBoundingClientRect().width;
+  const center = rect.left + rect.width / 2;
+  const left = Math.max(8, Math.min(center - width / 2, window.innerWidth - width - 8));
+  box.style.left = `${left}px`;
+  box.style.top = `${rect.bottom + 8}px`;
+  box.style.setProperty('--arrow', `${center - left}px`);
+  box.classList.add('below');
+});
+
 window.widget.onTasksChanged((updated) => {
   tasks = updated;
   editingId = null;
@@ -724,8 +807,10 @@ const shellEl = $('#shell');
 let ignoringMouse = false;
 
 document.addEventListener('mousemove', (event) => {
+  if (choiceBox || popoverBackdrop) return; // the backdrop needs every click while the choice popup is open
   const targets = [shellEl.getBoundingClientRect()];
   if (popover) targets.push(popover.getBoundingClientRect());
+  if (choiceBox) targets.push(choiceBox.getBoundingClientRect());
   const inside = targets.some((rect) =>
     event.clientX >= rect.left && event.clientX <= rect.right &&
     event.clientY >= rect.top && event.clientY <= rect.bottom
