@@ -583,7 +583,7 @@ function closePanel() {
 
 $('#collapse-button').addEventListener('click', closePanel);
 document.addEventListener('mousedown', (event) => {
-  if (popover && !popover.contains(event.target) && !event.target.closest('.day')) hidePopover();
+  if (popover && !popover.contains(event.target) && !event.target.closest('.day, #sync-button')) hidePopover();
 });
 document.addEventListener('keydown', (event) => {
   if (event.key !== 'Escape' || document.activeElement?.classList.contains('edit')) return;
@@ -630,21 +630,53 @@ $('#pin-toggle').addEventListener('click', (event) => {
 
 /* ---------- sync ---------- */
 
-function setSyncStatus(folder) {
+function setSyncStatus(connected) {
   const button = $('#sync-button');
-  button.classList.toggle('synced', Boolean(folder));
-  button.title = folder ? `Synced with: ${folder}` : 'Not synced — click to choose a synced folder';
+  button.classList.toggle('synced', connected);
+  button.title = connected ? 'Synced with Dropbox — click to disconnect' : 'Not synced — click to connect Dropbox';
 }
 
-window.widget.getSyncInfo().then((info) => setSyncStatus(info.folder));
+window.widget.getDropboxStatus().then(setSyncStatus);
+
+function showSyncPopover() {
+  hidePopover();
+  popover = document.createElement('div');
+  popover.className = 'popover below';
+  popover.setAttribute('role', 'dialog');
+
+  const info = document.createElement('div');
+  info.className = 'info';
+  const heading = document.createElement('b');
+  heading.textContent = 'Dropbox';
+  const detail = document.createElement('span');
+  detail.textContent = 'Connected · syncing';
+  info.append(heading, detail);
+
+  const disconnect = document.createElement('button');
+  disconnect.type = 'button';
+  disconnect.className = 'quiet';
+  disconnect.textContent = 'Disconnect';
+  disconnect.addEventListener('click', async () => {
+    setSyncStatus(await window.widget.disconnectDropbox());
+    hidePopover();
+  });
+
+  popover.append(info, disconnect);
+  document.body.append(popover);
+
+  const rect = $('#sync-button').getBoundingClientRect();
+  const box = popover.getBoundingClientRect();
+  const center = rect.left + rect.width / 2;
+  const left = Math.max(8, Math.min(center - box.width / 2, window.innerWidth - box.width - 8));
+  popover.style.left = `${left}px`;
+  popover.style.top = `${rect.bottom + 8}px`;
+  popover.style.setProperty('--arrow', `${center - left}px`);
+}
 
 $('#sync-button').addEventListener('click', async () => {
-  const result = await window.widget.chooseSyncFolder(tasks);
-  if (!result) return;
-  tasks = result.tasks;
-  editingId = null;
-  setSyncStatus(result.folder);
-  render();
+  if (popover) { hidePopover(); return; }
+  if (await window.widget.getDropboxStatus()) showSyncPopover();
+  else setSyncStatus(await window.widget.connectDropbox());
 });
 
 window.widget.onTasksChanged((updated) => {

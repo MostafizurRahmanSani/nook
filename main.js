@@ -1,7 +1,9 @@
-const { app, BrowserWindow, ipcMain, screen, dialog, Tray, Menu, nativeImage } = require('electron');
+const { app, BrowserWindow, ipcMain, screen, dialog, shell, Tray, Menu, nativeImage } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const zlib = require('zlib');
+const http = require('http');
+const crypto = require('crypto');
 
 // Without this, Windows attributes notifications (and other OS-level identity) to the
 // default "Electron" app name instead of Nook.
@@ -72,6 +74,9 @@ function createTray() {
   tray.setContextMenu(Menu.buildFromTemplate([
     { label: 'Show Nook', click: () => widgetWindow?.show() },
     { type: 'separator' },
+    { label: 'Connect Dropbox…', click: () => connectDropbox() },
+    { label: 'Disconnect Dropbox', click: () => disconnectDropbox() },
+    { type: 'separator' },
     { label: 'Quit Nook', click: () => { isQuitting = true; app.quit(); } }
   ]));
   tray.on('click', () => {
@@ -140,6 +145,204 @@ function saveTasksToDisk(tasks) {
     fs.writeFileSync(tasksFilePath(), JSON.stringify(tasks));
   } catch (err) {
     console.error('Could not save tasks', err);
+  }
+  scheduleDropboxPush(tasks);
+}
+
+// Optional Dropbox sync. The token is read from DROPBOX_TOKEN (a .env file next to main.js,
+// or the real environment). Without a token none of this runs and the app stays local-only.
+// Last writer wins: whichever side (local file vs Dropbox copy) was modified later is kept.
+function readEnv(name) {
+  if (process.env[name]) return process.env[name].trim();
+  try {
+    const line = fs.readFileSync(path.join(__dirname, '.env'), 'utf8')
+      .split(/\r?\n/).find((l) => l.startsWith(`${name}=`));
+    return line ? line.slice(name.length + 1).trim().replace(/^["']|["']$/g, '') : '';
+  } catch {
+    return '';
+  }
+}
+
+// Credentials, in order of preference:
+//  1. "Connect Dropbox…" in the tray menu — a one-time browser login (OAuth + PKCE, no app
+//     secret needed) whose refresh token is kept in config.json in the app's own data folder.
+//     This is what the installed app uses; nothing sensitive ships in the installer.
+//  2. DROPBOX_REFRESH_TOKEN + DROPBOX_APP_SECRET from .env (handy when running from source).
+//  3. A plain DROPBOX_TOKEN from .env, which expires after a few hours.
+const DROPBOX_TOKEN = readEnv('DROPBOX_TOKEN');
+const DROPBOX_APP_KEY = readEnv('DROPBOX_APP_KEY') || 'hnwlo24w1z70zma'; // public identifier, not a secret
+const DROPBOX_APP_SECRET = readEnv('DROPBOX_APP_SECRET');
+const ENV_REFRESH_TOKEN = readEnv('DROPBOX_REFRESH_TOKEN');
+const DROPBOX_REDIRECT_PORT = 53682;
+const DROPBOX_REDIRECT_URI = `http://localhost:${DROPBOX_REDIRECT_PORT}/callback`;
+let accessToken = { value: '', expiresAt: 0 };
+
+function hasDropbox() {
+  const config = readConfig();
+  // "Disconnect" must also switch off the .env credentials used when running from source.
+  if (config.dropboxDisabled) return false;
+  return Boolean(config.dropboxRefreshToken || (ENV_REFRESH_TOKEN && DROPBOX_APP_SECRET) || DROPBOX_TOKEN);
+}
+
+async function dropboxTokenRequest(params, useSecret = false) {
+  const headers = useSecret
+    ? { Authorization: `Basic ${Buffer.from(`${DROPBOX_APP_KEY}:${DROPBOX_APP_SECRET}`).toString('base64')}` }
+    : {};
+  const body = new URLSearchParams(useSecret ? params : { client_id: DROPBOX_APP_KEY, ...params });
+  const res = await fetch('https://api.dropboxapi.com/oauth2/token', { method: 'POST', headers, body });
+  if (!res.ok) throw new Error(`Dropbox token request failed: HTTP ${res.status}`);
+  return res.json();
+}
+
+function rememberAccessToken(data) {
+  // Renew a minute early so a token never expires mid-request.
+  accessToken = { value: data.access_token, expiresAt: Date.now() + (data.expires_in - 60) * 1000 };
+  return accessToken.value;
+}
+
+async function getDropboxToken() {
+  if (accessToken.value && Date.now() < accessToken.expiresAt) return accessToken.value;
+  const { dropboxRefreshToken } = readConfig();
+  if (dropboxRefreshToken) {    return rememberAccessToken(await dropboxTokenRequest({ grant_type: 'refresh_token', refresh_token: dropboxRefreshToken }));
+  }
+  if (ENV_REFRESH_TOKEN && DROPBOX_APP_SECRET) {
+    return rememberAccessToken(await dropboxTokenRequest({ grant_type: 'refresh_token', refresh_token: ENV_REFRESH_TOKEN }, true));
+  }
+  return DROPBOX_TOKEN;
+}
+
+let connectServer = null;
+
+// Resolves true once the login completes, false if it fails, is denied or is abandoned.
+function connectDropbox() {
+  return new Promise((resolve) => {
+    startDropboxLogin(resolve);
+  });
+}
+
+function startDropboxLogin(done) {
+  connectServer?.close();
+  const verifier = crypto.randomBytes(48).toString('base64url');
+  const challenge = crypto.createHash('sha256').update(verifier).digest('base64url');
+  const authUrl = 'https://www.dropbox.com/oauth2/authorize?' + new URLSearchParams({
+    client_id: DROPBOX_APP_KEY,
+    response_type: 'code',
+    code_challenge: challenge,
+    code_challenge_method: 'S256',
+    token_access_type: 'offline',
+    redirect_uri: DROPBOX_REDIRECT_URI
+  });
+
+  let connected = false;
+  const server = http.createServer(async (req, res) => {
+    const url = new URL(req.url, DROPBOX_REDIRECT_URI);
+    if (url.pathname !== '/callback') { res.writeHead(404).end(); return; }
+    const code = url.searchParams.get('code');
+    try {
+      if (!code) throw new Error(url.searchParams.get('error_description') || 'Authorization was denied.');
+      const data = await dropboxTokenRequest({
+        grant_type: 'authorization_code',
+        code,
+        code_verifier: verifier,
+        redirect_uri: DROPBOX_REDIRECT_URI
+      });
+      const { dropboxDisabled, ...config } = readConfig();
+      writeConfig({ ...config, dropboxRefreshToken: data.refresh_token });
+      rememberAccessToken(data);
+      res.writeHead(200, { 'Content-Type': 'text/html' }).end('<h3>Nook is connected to Dropbox. You can close this tab.</h3>');
+      connected = true;
+      syncWithDropbox();
+    } catch (err) {
+      res.writeHead(500, { 'Content-Type': 'text/plain' }).end(`Could not connect: ${err.message}`);
+      dialog.showErrorBox('Dropbox', `Could not connect: ${err.message}`);
+    }
+    server.close();
+  });
+  server.on('error', (err) => {
+    dialog.showErrorBox('Dropbox', `Could not start the login helper: ${err.message}`);
+    done(false);
+  });
+  server.on('close', () => {
+    if (connectServer === server) connectServer = null;
+    done(connected);
+  });
+  server.listen(DROPBOX_REDIRECT_PORT, '127.0.0.1', () => shell.openExternal(authUrl));
+  connectServer = server;
+  setTimeout(() => server.close(), 5 * 60 * 1000); // give up if the login is abandoned
+}
+
+function disconnectDropbox() {
+  const { dropboxRefreshToken, ...rest } = readConfig();
+  writeConfig({ ...rest, dropboxDisabled: true });
+  accessToken = { value: '', expiresAt: 0 };
+  dropboxRev = null;
+}
+
+const DROPBOX_FILE = `/${TASKS_FILENAME}`;
+const DROPBOX_POLL_MS = 60 * 1000;
+const DROPBOX_PUSH_DELAY_MS = 2000;
+let dropboxRev = null;
+let dropboxPushTimer = null;
+
+async function dropboxDownload() {
+  const res = await fetch('https://content.dropboxapi.com/2/files/download', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${await getDropboxToken()}`,
+      'Dropbox-API-Arg': JSON.stringify({ path: DROPBOX_FILE })
+    }
+  });
+  if (res.status === 409) return null; // file doesn't exist on Dropbox yet
+  if (!res.ok) throw new Error(`Dropbox download failed: HTTP ${res.status}`);
+  const meta = JSON.parse(res.headers.get('dropbox-api-result'));
+  const parsed = JSON.parse(await res.text());
+  return { tasks: Array.isArray(parsed) ? parsed : [], rev: meta.rev, modified: Date.parse(meta.server_modified) };
+}
+
+async function dropboxUpload(tasks) {
+  const res = await fetch('https://content.dropboxapi.com/2/files/upload', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${await getDropboxToken()}`,
+      'Dropbox-API-Arg': JSON.stringify({ path: DROPBOX_FILE, mode: 'overwrite', mute: true }),
+      'Content-Type': 'application/octet-stream'
+    },
+    body: JSON.stringify(tasks)
+  });
+  if (!res.ok) throw new Error(`Dropbox upload failed: HTTP ${res.status}`);
+  dropboxRev = (await res.json()).rev;
+}
+
+function scheduleDropboxPush(tasks) {
+  if (!hasDropbox()) return;
+  clearTimeout(dropboxPushTimer);
+  dropboxPushTimer = setTimeout(() => {
+    dropboxPushTimer = null;
+    dropboxUpload(tasks).catch((err) => console.error(err.message));
+  }, DROPBOX_PUSH_DELAY_MS);
+}
+
+async function syncWithDropbox() {
+  if (!hasDropbox() || dropboxPushTimer) return; // a local edit is about to be pushed anyway
+  try {
+    const remote = await dropboxDownload();
+    const localPath = tasksFilePath();
+    const localExists = fs.existsSync(localPath);
+    if (!remote) {
+      if (localExists) await dropboxUpload(loadTasksFromDisk());
+      return;
+    }
+    if (remote.rev === dropboxRev) return; // nothing changed since our last sync
+    const localModified = localExists ? fs.statSync(localPath).mtimeMs : 0;
+    if (remote.modified > localModified) {
+      fs.writeFileSync(localPath, JSON.stringify(remote.tasks));
+      dropboxRev = remote.rev;
+      widgetWindow?.webContents.send('tasks:changed', remote.tasks);
+    } else {
+      await dropboxUpload(loadTasksFromDisk());
+    }
+  } catch (err) {
+    console.error(err.message);
   }
 }
 
@@ -231,25 +434,18 @@ app.whenReady().then(() => {
 
   ipcMain.handle('tasks:load', () => loadTasksFromDisk());
   ipcMain.on('tasks:save', (_event, tasks) => saveTasksToDisk(tasks));
-  ipcMain.handle('tasks:get-sync-info', () => ({ folder: readConfig().syncFolder || null }));
-  ipcMain.handle('tasks:choose-folder', async (_event, currentTasks) => {
-    const result = await dialog.showOpenDialog(widgetWindow, {
-      properties: ['openDirectory'],
-      title: 'Choose a synced folder (Google Drive, OneDrive, Dropbox…)'
-    });
-    if (result.canceled || !result.filePaths[0]) return null;
-
-    const folder = result.filePaths[0];
-    writeConfig({ syncFolder: folder });
-    const target = path.join(folder, TASKS_FILENAME);
-    const existing = fs.existsSync(target);
-    const tasks = existing ? loadTasksFromDisk() : (currentTasks || []);
-    if (!existing) saveTasksToDisk(tasks);
-    watchTasksFile();
-    return { folder, tasks };
+  // The ☁ button: connect Nook to Dropbox, or disconnect again.
+  ipcMain.handle('dropbox:status', () => hasDropbox());
+  ipcMain.handle('dropbox:connect', () => connectDropbox());
+  ipcMain.handle('dropbox:disconnect', () => {
+    disconnectDropbox();
+    return hasDropbox();
   });
 
   watchTasksFile();
+
+  syncWithDropbox();
+  setInterval(syncWithDropbox, DROPBOX_POLL_MS);
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWidget();
