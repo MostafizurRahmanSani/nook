@@ -10,11 +10,11 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/MostafizurRahmanSani/nook/releases"><img src="https://img.shields.io/badge/%E2%AC%87%20Download%20for%20Windows-E8725C?style=for-the-badge" alt="Download for Windows"></a>
+  <a href="https://github.com/MostafizurRahmanSani/nook/releases/latest"><img src="https://img.shields.io/badge/%E2%AC%87%20Download%20for%20Windows-E8725C?style=for-the-badge" alt="Download for Windows"></a>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/github/v/release/MostafizurRahmanSani/nook?style=flat-square" alt="Latest release">
+  <img src="https://img.shields.io/github/v/release/MostafizurRahmanSani/nook?style=flat-square&cache=1" alt="Latest release">
   <img src="https://img.shields.io/github/license/MostafizurRahmanSani/nook?style=flat-square" alt="License">
   <img src="https://img.shields.io/github/stars/MostafizurRahmanSani/nook?style=flat-square" alt="Stars">
 </p>
@@ -45,7 +45,7 @@
 
 Grab the installer and run it — no Node, no terminal, no setup required.
 
-**[⬇ Download the latest installer from Releases](https://github.com/MostafizurRahmanSani/nook/releases)**
+**[⬇ Download the latest installer from Releases](https://github.com/MostafizurRahmanSani/nook/releases/latest)**
 
 It installs to your user folder (no admin rights needed), adds a Start Menu / Desktop shortcut, and registers itself to auto-start on login.
 
