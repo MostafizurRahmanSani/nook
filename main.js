@@ -372,8 +372,8 @@ function createWidget() {
     width: WINDOW_WIDTH,
     height: WINDOW_HEIGHT,
     resizable: false,
-    x: workArea.x + workArea.width - WINDOW_WIDTH - 24,
-    y: workArea.y + 28,
+    x: workArea.x + workArea.width - WINDOW_WIDTH,
+    y: workArea.y,
     frame: false,
     icon: ICON_PATH,
     alwaysOnTop: false,
@@ -484,4 +484,12 @@ app.whenReady().then(() => {
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
+});
+
+// Windows keeps a tray icon on screen until the owning app removes it, so quitting without
+// this leaves a dead "ghost" icon behind that only disappears when the mouse hovers over it.
+app.on('before-quit', () => {
+  isQuitting = true;
+  tray?.destroy();
+  tray = null;
 });
